@@ -245,8 +245,9 @@ class ngMultiViewFactory
 
 
 	class Link
+		currentScope = currentElement =  previousElement = undefined
+
 		constructor: (scope, $element, attr, ctrl, $transclude)->
-			currentScope = currentElement =  previousElement = undefined
 			autoScrollExp = attr.autoscroll
 			onloadExp = attr.onload || ''
 		

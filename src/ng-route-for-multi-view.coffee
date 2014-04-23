@@ -4,20 +4,35 @@
 # @description
 # 
 ###
-ngRoute4MultiViewModule = angular.module('ngRouteForMultiView', ['ng'])
+ngRoute4MultiViewModule = angular.module('ngRouteForMultiView', ['ng', 'ngRoute'])
 
 
+DEFAULT_VIEW_KEY = undefined
+OTHERWISE_PATH = null
 
 class $Route4MultiViewProvider
 
 	routes = {}
+	$route = $rootScope = $location = $routeParams = $q = $injector = $http = $templateCache = $sce = forceReload = undefined
+	forceReload = false
+	setInject = (injects..)->
+		[$route, $rootScope, $location, $routeParams, $q, $injector, $http, $templateCache, $sce] = injects
 
 	when: (path, route, views)->
 		routes[path] = angular.extend(
 			{reloadOnSearch: true}
 			route
 			path && pathRegExp(path, route)
-			{"views": views}
+			{
+				"views": angular.extend({
+					DEFAULT_VIEW_KEY:
+						controller: route.controller
+						controllerAs: route.controllerAs
+						template: route.template
+						templateUrl: route.templateUrl
+						resolve: route.resolve
+				}, views)
+			}
 		)
 
 		if path
@@ -32,7 +47,7 @@ class $Route4MultiViewProvider
 
 
 	otherwise: (params)->
-		@when(null, params)
+		@when(OTHERWISE_PATH, params)
 
 
 	$get: [
@@ -47,14 +62,13 @@ class $Route4MultiViewProvider
 		($rootScope, $location, $routeParams, $q, $injector, $http, $templateCache, $sce)->
 			$route =
 				routes: routes
+				reload: ->
+					forceReload = true
+					$rootScope.$evalAsync(updateRoute)
 
-			route = new Route(routes, $route, $rootScope, $location, $routeParams, $q, $injector, $http, $templateCache, $sce)
+			setInject($route, $rootScope, $location, $routeParams, $q, $injector, $http, $templateCache, $sce)
 
-			$route.reload = ->
-					route.forceReload = true
-					$rootScope.$evalAsync(route.updateRoute)
-       
-			$rootScope.$on('$locationChangeSuccess', route.updateRoute);
+			$rootScope.$on('$locationChangeSuccess', updateRoute);
 
 			$route
 	]
@@ -80,23 +94,18 @@ class $Route4MultiViewProvider
 		ret
 
 
-ngRoute4MultiViewModule.provider('$routeForMultiView', $Route4MultiViewProvider)
+	inherit = (parent, extra)->
+		angular.extend(new (angular.extend((->) {}, {prototype:parent}))(), extra)
 
 
-
-class Route
-	constructor: (@routes, @$route, @$rootScope, @$location, @$routeParams, @$q, @$injector, @$http, @$templateCache, @$sce)->
-		@forceReload = false
-
-
-	switchRouteMatcher: (on, route)->
+	switchRouteMatcher = (_on, route)->
 		keys = route.keys
 		params = {}
 
 		if not route.regexp
 			return null
 
-		m = route.regexp.exec(on)
+		m = route.regexp.exec(_on)
 		if not m
 			return null
 
@@ -111,58 +120,62 @@ class Route
 		params
 
 
-	updateRoute: =>
-		next = @parseRoute()
-		last = @$route.current
+	updateRoute = ->
+		next = parseRoute()
+		last = $route.current
 
 		if next and last and next.$$route == last.$$route and
 		angular.equals(next.pathParams, last.pathParams) and
-		not next.reloadOnSearch and not @faceReload
+		not next.reloadOnSearch and not faceReload
 
 			last.params = next.params
-			angular.copy(last.params, @$routeParams)
-			@$rootScope.$broadcast('$routeUpdate', last)
+			angular.copy(last.params, $routeParams)
+			$rootScope.$broadcast('$routeUpdate', last)
 
 		else if next || last
-			@forceReload = false
-			@$rootScope.$broadcast('$routeChangeStart', next, last)
-			@$route.current = next
+			forceReload = false
+			$rootScope.$broadcast('$routeChangeStart', next, last)
+			$route.current = next
 
 			if next
 				if next.redirectTo
 					if angular.isString(next.redirectTo)
-						@$location.path(@interpolate(next.redirectTo, next.params)).search(next.params).replace()
+						$location.path(interpolate(next.redirectTo, next.params)).search(next.params).replace()
 					else
-						@$location.url(next.redirectTo(next.pathParams, @$location.path(), @$location.search())).replace()
+						$location.url(next.redirectTo(next.pathParams, $location.path(), $location.search())).replace()
 
-			$q.when(next).then(=>
+			$q.when(next).then(->
 				if next
-					locals = angular.extend({}, next.resolve)
-					template = templateUrl = null
+					allLocals = {}
+					angular.forEach(next.views, (view, viewKey)->
+						locals = angular.extend({}, view.resolve, {"$viewKey": viewKey})
+						template = templateUrl = null
 
-					angular.forEach(locals, (value, key)=>
-						locals[key] = if angular.isString(value) then
-							@$injector.get(value) else @$injector.invoke(value, null, null, key)
+						angular.forEach(locals, (value, key)->
+							locals[key] = if angular.isString(value) then $injector.get(value) else $injector.invoke(value, null, null, key)
+						)
+	
+						if angular.isDefined(template = view.template)
+							if angular.isFunction(template)
+								template = template(next.params)
+							
+						else if angular.isDefined(templateUrl = view.templateUrl)
+							if angular.isFunction(templateUrl)
+								templateUrl = templateUrl(next.params)
+							
+							templateUrl = $sce.getTrustedResourceUrl(templateUrl)
+							if angular.isDefined(templateUrl)
+								view.loadedTemplateUrl = templateUrl
+								template = $http.get(templateUrl, {cache: $templateCache}).
+								then((response)-> response.data)
+						
+						if angular.isDefined(template)
+							locals['$template'] = template
+
+						allLocals[viewKey] = $q.all(locals)
 					)
-
-					if angular.isDefined(template = next.template)
-						if angular.isFunction(template)
-							template = template(next.params)
-						
-					else if angular.isDefined(templateUrl = next.templateUrl)
-						if angular.isFunction(templateUrl)
-							templateUrl = templateUrl(next.params)
-						
-						templateUrl = @$sce.getTrustedResourceUrl(templateUrl)
-						if angular.isDefined(templateUrl)
-							next.loadedTemplateUrl = templateUrl
-							template = @$http.get(templateUrl, {cache: $templateCache}).
-							then((response)-> response.data)
 					
-					if angular.isDefined(template)
-						locals['$template'] = template
-
-					return @$q.all(locals)
+					return $q.all(allLocals)
 				return
 			)
 			# after route change
@@ -179,22 +192,22 @@ class Route
 			)
 
 
-	parseRoute: ->
+	parseRoute = ->
 		# Match a route
 		params = match = null
-		angular.forEach(@routes, (route, path)=>
-			if not match && (params = @switchRouteMatcher(@$location.path(), route))
+		angular.forEach(routes, (route, path)=>
+			if not match && (params = switchRouteMatcher($location.path(), route))
 				match = inherit(route, 
-					params: angular.extend({}, @$location.search(), params)
+					params: angular.extend({}, $location.search(), params)
 					pathParams: params
 				)
 				match.$$route = route
 		)
 		# No route matched; fallback to "otherwise" route
-		match || @routes[null] && inherit(@routes[null], {params: {}, pathParams:{}})
+		match || routes[OTHERWISE_PATH] && inherit(routes[OTHERWISE_PATH], {params: {}, pathParams:{}})
 
 
-	interpolate: (string, params)->
+	interpolate = (string, params)->
 		result = []
 		angular.forEach((string || '').split(':'), (segment, i)->
 			if i == 0
@@ -211,5 +224,110 @@ class Route
 
 
 
-inherit = (parent, extra)->
-	angular.extend(new (angular.extend((->) {}, {prototype:parent}))(), extra)
+ngRoute4MultiViewModule.provider('$routeForMultiView', $Route4MultiViewProvider)
+
+
+class ngMultiViewFactory
+	@$inject = ['$route', '$anchorScroll', '$animate']
+	$route = $anchorScroll = $animate = null
+	setInject = (injects..)->
+		[$route, $anchorScroll, $animate] = injects
+	
+	constructor: ($route, $anchorScroll, $animate)->
+		setInject($route, $anchorScroll, $animate)
+		{
+			restrict: 'ECA'
+			terminal: true
+			priority: 400
+			transclude: 'element'
+			link: Link
+		}
+
+
+	class Link
+		constructor: (scope, $element, attr, ctrl, $transclude)->
+			currentScope = currentElement =  previousElement = undefined
+			autoScrollExp = attr.autoscroll
+			onloadExp = attr.onload || ''
+		
+			scope.$on('$routeChangeSuccess', update)
+			update()
+
+		cleanupLastView = ->
+			if previousElement
+				previousElement.remove()
+				previousElement = null
+			
+			if currentScope
+				currentScope.$destroy()
+				currentScope = null
+			
+			if currentElement
+				$animate.leave(currentElement, ->
+					previousElement = null
+				)
+				previousElement = currentElement
+				currentElement = null
+			
+		
+
+		update = ->
+			locals = $route.current && $route.current.locals
+			template = locals && locals.$template
+
+			if angular.isDefined(template)
+				newScope = scope.$new()
+				current = $route.current
+
+				clone = $transclude(newScope, (clone)->
+					$animate.enter(clone, null, currentElement || $element, ()->
+						# onNgViewEnter
+						if angular.isDefined(autoScrollExp) and
+						(!autoScrollExp || scope.$eval(autoScrollExp))
+							$anchorScroll()
+						return
+					)
+					cleanupLastView()
+				)
+
+				currentElement = clone
+				currentScope = current.scope = newScope
+				currentScope.$emit('$viewContentLoaded')
+				currentScope.$eval(onloadExp)
+			else
+				cleanupLastView()
+			
+
+
+
+class ngMultiViewFillContentFactory
+	@$inject = ['$compile', '$controller', '$route']
+	
+	constructor: ($compile, $controller, $route)->
+		{
+			restrict: 'ECA',
+			priority: -400,
+			link: (scope, $element, attr)->
+				current = $route.current
+				locals = current.locals[attr.ngMultiView] || current.locals[DEFAULT_VIEW_KEY]
+				view = current.views[attr.ngMultiView] || current.views[DEFAULT_VIEW_KEY]
+	
+				$element.html(locals.$template)
+
+				link = $compile($element.contents())
+
+				if view.controller
+					locals.$scope = scope
+					controller = $controller(view.controller, locals)
+					if view.controllerAs
+						scope[view.controllerAs] = controller
+					
+					$element.data('$ngControllerController', controller)
+					$element.children().data('$ngControllerController', controller)
+				
+				link(scope)
+		}
+
+
+ngRoute4MultiViewModule.directive('ngMultiView', ngMultiViewFactory)
+ngRoute4MultiViewModule.directive('ngMultiView', ngMultiViewFillContentFactory)

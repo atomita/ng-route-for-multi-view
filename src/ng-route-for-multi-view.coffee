@@ -15,7 +15,7 @@ class $Route4MultiViewProvider
 	routes = {}
 	$route = $rootScope = $location = $routeParams = $q = $injector = $http = $templateCache = $sce = forceReload = undefined
 	forceReload = false
-	setInject = (injects..)->
+	setInject = (injects...)->
 		[$route, $rootScope, $location, $routeParams, $q, $injector, $http, $templateCache, $sce] = injects
 
 	when: (path, route, views)->
@@ -230,7 +230,7 @@ ngRoute4MultiViewModule.provider('$routeForMultiView', $Route4MultiViewProvider)
 class ngMultiViewFactory
 	@$inject = ['$route', '$anchorScroll', '$animate']
 	$route = $anchorScroll = $animate = null
-	setInject = (injects..)->
+	setInject = (injects...)->
 		[$route, $anchorScroll, $animate] = injects
 	
 	constructor: ($route, $anchorScroll, $animate)->

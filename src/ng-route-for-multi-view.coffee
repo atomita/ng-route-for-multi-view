@@ -240,64 +240,58 @@ class ngMultiViewFactory
 			terminal: true
 			priority: 400
 			transclude: 'element'
-			link: Link
+			link: (scope, $element, attr, ctrl, $transclude)->
+				cleanupLastView = ->
+					if previousElement
+						previousElement.remove()
+						previousElement = null
+					
+					if currentScope
+						currentScope.$destroy()
+						currentScope = null
+					
+					if currentElement
+						$animate.leave(currentElement, ->
+							previousElement = null
+						)
+						previousElement = currentElement
+						currentElement = null
+
+		
+				update = ->
+					locals = $route.current && $route.current.locals
+					template = locals && locals.$template
+		
+					if angular.isDefined(template)
+						newScope = scope.$new()
+						current = $route.current
+		
+						clone = $transclude(newScope, (clone)->
+							$animate.enter(clone, null, currentElement || $element, ()->
+								# onNgViewEnter
+								if angular.isDefined(autoScrollExp) and
+								(!autoScrollExp || scope.$eval(autoScrollExp))
+									$anchorScroll()
+								return
+							)
+							cleanupLastView()
+						)
+		
+						currentElement = clone
+						currentScope = current.scope = newScope
+						currentScope.$emit('$viewContentLoaded')
+						currentScope.$eval(onloadExp)
+					else
+						cleanupLastView()
+
+				currentScope = currentElement =  previousElement = undefined
+				autoScrollExp = attr.autoscroll
+				onloadExp = attr.onload || ''
+			
+				scope.$on('$routeChangeSuccess', update)
+				update()
 		}
 
-
-	class Link
-		currentScope = currentElement =  previousElement = undefined
-
-		constructor: (scope, $element, attr, ctrl, $transclude)->
-			autoScrollExp = attr.autoscroll
-			onloadExp = attr.onload || ''
-		
-			scope.$on('$routeChangeSuccess', update)
-			update()
-
-		cleanupLastView = ->
-			if previousElement
-				previousElement.remove()
-				previousElement = null
-			
-			if currentScope
-				currentScope.$destroy()
-				currentScope = null
-			
-			if currentElement
-				$animate.leave(currentElement, ->
-					previousElement = null
-				)
-				previousElement = currentElement
-				currentElement = null
-			
-		
-
-		update = ->
-			locals = $route.current && $route.current.locals
-			template = locals && locals.$template
-
-			if angular.isDefined(template)
-				newScope = scope.$new()
-				current = $route.current
-
-				clone = $transclude(newScope, (clone)->
-					$animate.enter(clone, null, currentElement || $element, ()->
-						# onNgViewEnter
-						if angular.isDefined(autoScrollExp) and
-						(!autoScrollExp || scope.$eval(autoScrollExp))
-							$anchorScroll()
-						return
-					)
-					cleanupLastView()
-				)
-
-				currentElement = clone
-				currentScope = current.scope = newScope
-				currentScope.$emit('$viewContentLoaded')
-				currentScope.$eval(onloadExp)
-			else
-				cleanupLastView()
-			
 
 
 

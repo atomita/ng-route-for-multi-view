@@ -241,6 +241,10 @@ class ngMultiViewFactory
 			priority: 400
 			transclude: 'element'
 			link: (scope, $element, attr, ctrl, $transclude)->
+				currentScope = currentElement =  previousElement = undefined
+				autoScrollExp = attr.autoscroll
+				onloadExp = attr.onload || ''
+				
 				cleanupLastView = ->
 					if previousElement
 						previousElement.remove()
@@ -257,7 +261,6 @@ class ngMultiViewFactory
 						previousElement = currentElement
 						currentElement = null
 
-		
 				update = ->
 					locals = $route.current && $route.current.locals
 					template = locals && locals.$template
@@ -284,10 +287,7 @@ class ngMultiViewFactory
 					else
 						cleanupLastView()
 
-				currentScope = currentElement =  previousElement = undefined
-				autoScrollExp = attr.autoscroll
-				onloadExp = attr.onload || ''
-			
+
 				scope.$on('$routeChangeSuccess', update)
 				update()
 		}

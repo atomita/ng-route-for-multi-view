@@ -1,0 +1,41 @@
+{
+  "name": "ng-route-for-multi-view",
+  "version": "0.0.0",
+  "description": "ng-route-for-multi-view =======================",
+  "main": " ",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/atomita/ng-route-for-multi-view.git"
+  },
+  "author": "atomita",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/atomita/ng-route-for-multi-view/issues"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "grunt": "~0.4.1",
+    "grunt-concurrent": "~0.5.0",
+    "grunt-contrib-clean": "~0.5.0",
+    "grunt-contrib-coffee": "~0.7.0",
+    "grunt-contrib-uglify": "~0.2.0",
+    "grunt-contrib-watch": "~0.5.2",
+    "grunt-newer": "~0.6.1",
+    "grunt-ngmin": "~0.0.2",
+    "load-grunt-tasks": "~0.4.0",
+    "time-grunt": "~0.2.1",
+    "grunt-karma": "~0.8.3",
+    "karma": "~0.12.16",
+    "karma-jasmine": "~0.1.5",
+    "karma-phantomjs-launcher": "~0.1.4"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "test": "grunt test"
+  }
+}

@@ -91,7 +91,9 @@ module.exports = (grunt) ->
 					expand: true
 					cwd: "<%= project.dist %>"
 					src: "*.js"
-					dest: "<%= project.dist %>/min"
+					dest: "<%= project.dist %>"
+					rename: (dest, src)->
+						dest + '/' + src.replace(/\.js$/, ".min.js")
 				]
 
 		uglify:
@@ -102,9 +104,9 @@ module.exports = (grunt) ->
 			dist:
 				files: [
 					expand : true
-					cwd: "<%= project.dist %>/min"
-					src: "*.js"
-					dest: "<%= project.dist %>/min"
+					cwd: "<%= project.dist %>"
+					src: "*.min.js"
+					dest: "<%= project.dist %>"
 				]
 
 		

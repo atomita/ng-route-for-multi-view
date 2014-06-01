@@ -1,8 +1,8 @@
-###
-# @ngdoc module
-# @name ngRouteForMultiView
-# @description
-# 
+###*
+ * @ngdoc module
+ * @name ngRouteForMultiView
+ * @description
+ * 
 ###
 ngRoute4MultiViewModule = angular.module('ngRouteForMultiView', ['ng', 'ngRoute'])
 
